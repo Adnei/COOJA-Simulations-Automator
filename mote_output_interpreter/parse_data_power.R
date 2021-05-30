@@ -3,7 +3,7 @@ library(dplyr)
 
 log_data.df <- read.csv("../all_logs.log", sep="|", header=T, stringsAsFactors = F)
 
-time_unit <- 1000000
+us_to_s <- 1000000
 
 listen_transmit.df <- log_data.df[
     !is.na(log_data.df$LISTEN) &

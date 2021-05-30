@@ -1,10 +1,7 @@
-library(ggplot2)
 library(dplyr)
 library(readr)
-
-log_data.df <- read.csv("../all_logs.log", sep="|", header=T, stringsAsFactors = F)
-
-time_unit <- 1000000
+# it loads static variables, such as log_data.df, us_to_s and max_exec
+source("static.R")
 
 send_recv <- log_data.df[grepl('DATA', log_data.df$Message), -c(5,6)] #-c(5,6) removes columns 5 and 6
 send_recv <- send_recv[order(send_recv$Time), ]

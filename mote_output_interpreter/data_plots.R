@@ -1,8 +1,8 @@
+library(ggplot2)
 source("parse_data.R")
 ################################################################################
 #                            Delivery Rate By Execution                        #
 ################################################################################
-max_exec <- max(parse_data.df$EXEC)
 
 recv_rate <- c()
 for(i_exec in c(1:max_exec)){
@@ -17,9 +17,13 @@ plot_info.df <- data.frame(x_axis=c(1:max_exec), y_axis=recv_rate)
 delivery_rate_exec.plot <- ggplot(plot_info.df, aes(x=x_axis,y=y_axis, color=x_axis)) +
   geom_line() +
   geom_point() +
+  geom_hline(aes(yintercept = mean(y_axis), linetype=as.character(round(mean(y_axis),4)), group=mean(y_axis)),
+    show.legend=TRUE,
+    color="red") +
+  scale_linetype_manual(name="Média", values = c(2)) +
   ylab("Taxa de entrega") +
   xlab("ID de execução") +
-  ggtitle("Entrega de pacotes") +
+  ggtitle("Taxa de Entrega de pacotes: CTP") +
   theme_minimal() +
   scale_x_continuous(breaks=seq(1,max(plot_info.df$x_axis),1) ) +
   scale_y_continuous(limits=c(0, 1) )
@@ -29,7 +33,7 @@ ggsave(filename='delivery_rate_exec.pdf', plot=delivery_rate_exec.plot)
 #                         Packet Delay Avg By Execution                        #
 ################################################################################
 delay_avg_exec.df <- aggregate(DELAY ~ EXEC, data=parse_data.df, FUN=mean)
-delay_exec.plot <- ggplot(delay_avg_exec.df, aes(x=EXEC,y=DELAY/time_unit)) +
+delay_exec.plot <- ggplot(delay_avg_exec.df, aes(x=EXEC,y=DELAY/us_to_s)) +
   geom_line() +
   geom_point() +
   ylab("Atraso médio (s)") + # OLD -> µs
@@ -44,7 +48,7 @@ ggsave(filename='delay_exec.pdf', plot=delay_exec.plot)
 source("parse_data_power.R")
 
 lt_sec_precision.df <- listen_transmit.df
-lt_sec_precision.df$Time <- as.integer(lt_sec_precision.df$Time/time_unit/5)
+lt_sec_precision.df$Time <- as.integer(lt_sec_precision.df$Time/us_to_s/5)
 
 energest_avg_by_sec <- aggregate(list(
     LISTEN=lt_sec_precision.df$LISTEN,
@@ -79,3 +83,21 @@ power_avg_sec.plot <- ggplot(energest_avg_by_mote, aes(x = Mote)) +
   theme_minimal() +
   scale_x_continuous(breaks=seq(1,max(energest_avg_by_mote$Mote),1) )
 ggsave(filename='power_avg_mote.pdf', plot=power_avg_sec.plot)
+################################################################################
+#                               Bully Overhead                                 #
+################################################################################
+source("bully_overhead.R")
+
+bully_overhead.plot <- ggplot(packet_overhead_by_voting.df) +
+  geom_line(aes(x = voting,
+      y=total_packets, group=exec, color=exec)) +
+  geom_line(data=packet_overhead_average_by_voting.df,
+      aes(x = voting,
+      y = avg_packets),
+      linetype="dashed",
+      color = "red") +
+  ylab("Total de Pacotes") +
+  xlab("Votação") +
+  ggtitle("Overhead de pacotes por votação") +
+  theme_minimal()
+ggsave(filename='packet_overhead.pdf', plot=bully_overhead.plot)
