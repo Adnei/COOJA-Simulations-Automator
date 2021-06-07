@@ -1,6 +1,20 @@
 library(ggplot2)
 source("parse_data.R")
 ################################################################################
+#                            Delay Boxplot                                     #
+################################################################################
+#compute lower and upper whiskers
+data_ylim <- boxplot.stats(parse_data.df$DELAY/us_to_s)$stats[c(1,5)]
+delay_boxplot.plot <- ggplot(parse_data.df, aes(x = factor(1), y = DELAY/us_to_s)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(color="red")+
+  ylab("Delay (s)") + # OLD -> µs
+  xlab("Data from 10 executions") +
+  ggtitle("Delay Boxplot") +
+  theme_minimal() +
+  coord_cartesian(ylim = data_ylim * 1.05) # zoom rather than excluding data
+ggsave(filename='delay_boxplot.pdf', plot=delay_boxplot.plot)
+################################################################################
 #                            Delivery Rate By Execution                        #
 ################################################################################
 
@@ -32,6 +46,7 @@ ggsave(filename='delivery_rate_exec.pdf', plot=delivery_rate_exec.plot)
 ################################################################################
 #                         Packet Delay Avg By Execution                        #
 ################################################################################
+# @DEPRECATED  --> Use the boxpload approach.
 delay_avg_exec.df <- aggregate(DELAY ~ EXEC, data=parse_data.df, FUN=mean)
 delay_exec.plot <- ggplot(delay_avg_exec.df, aes(x=EXEC,y=DELAY/us_to_s)) +
   geom_line() +
@@ -43,46 +58,54 @@ delay_exec.plot <- ggplot(delay_avg_exec.df, aes(x=EXEC,y=DELAY/us_to_s)) +
   scale_x_continuous(breaks=seq(1,max(plot_info.df$x_axis),1) )
 ggsave(filename='delay_exec.pdf', plot=delay_exec.plot)
 ################################################################################
-#                         Power mW By Time                                     #
+#                         RPL Power mW By Time                                 #
 ################################################################################
 source("parse_data_power.R")
 
-lt_sec_precision.df <- listen_transmit.df
-lt_sec_precision.df$Time <- as.integer(lt_sec_precision.df$Time/us_to_s/5)
+# Mote 1 is ignored
+lt_min_precision.df <- listen_transmit.df[listen_transmit.df$ID != 1, ]
+lt_min_precision.df$Time <- as.integer(lt_min_precision.df$Time)/us_to_min
+breakpoints <- seq(0, 20, by=0.5)
 
-energest_avg_by_sec <- aggregate(list(
-    LISTEN=lt_sec_precision.df$LISTEN,
-    TRANSMIT=lt_sec_precision.df$TRANSMIT),
-  by=list(Time=lt_sec_precision.df$Time),
+half_min_aggregation.df <- aggregate(list(
+    LISTEN = lt_min_precision.df$LISTEN,
+    TRANSMIT=lt_min_precision.df$TRANSMIT),
+  by=list(
+    breakpoints=cut(lt_min_precision.df$Time, breaks = breakpoints)),
   FUN=mean)
 
-power_avg_sec.plot <- ggplot(energest_avg_by_sec, aes(x = Time)) +
-  geom_line(aes(y=LISTEN* 0.33 * 3 / 32768 / 5, colour="RX")) +
-  geom_line(aes(y=TRANSMIT* 0.33 * 3 / 32768 / 5, colour="TX")) +
-  ylab("Energia (mW)") +
-  xlab("Tempo (s)") +
-  ggtitle("Consumo de energia") +
-  theme_minimal() #+
-  # scale_x_continuous(breaks=seq(1,max(plot_info.df$x_axis),1) )
-ggsave(filename='power_avg_sec.pdf', plot=power_avg_sec.plot)
+half_min_aggregation.df$breakpoints <- seq(0.5, 20, by=0.5)
+
+power_avg_min.plot <- ggplot(half_min_aggregation.df, aes(x = breakpoints)) +
+  geom_line(aes(y=LISTEN  *  rx_current * 3 / 32768 * 5, color="RX")) +
+  geom_line(aes(y=TRANSMIT * tx_current * 3 / 32768 * 5, color="TX")) +
+  ylab("Power Consumption Average (mW)") +
+  xlab("Time (min)") +
+  ggtitle("XX") +
+  theme_minimal()
+ggsave(filename='power_avg_sec.pdf', plot=power_avg_min.plot)
 ################################################################################
 #                         Power mW By Mote                                     #
 ################################################################################
+
+listen_transmit_fix.df <- listen_transmit.df[listen_transmit.df$ID != 1, ]
 energest_avg_by_mote <- aggregate(list(
-    LISTEN=listen_transmit.df$LISTEN,
-    TRANSMIT=listen_transmit.df$TRANSMIT),
-  by=list(Mote=listen_transmit.df$ID),
+    LISTEN=listen_transmit_fix.df$LISTEN,
+    TRANSMIT=listen_transmit_fix.df$TRANSMIT),
+  by=list(Mote=listen_transmit_fix.df$ID),
   FUN=mean)
 
-power_avg_sec.plot <- ggplot(energest_avg_by_mote, aes(x = Mote)) +
-  geom_line(aes(y=LISTEN* 0.33 * 3 / 32768 / 5, colour="RX")) +
-  geom_line(aes(y=TRANSMIT* 0.33 * 3 / 32768 / 5, colour="TX")) +
-  ylab("Energia (mW)") +
+ # Current from TmoteSky data sheet:
+ #    http://www.crew-project.eu/sites/default/files/tmote-sky-datasheet.pdf
+power_avg_mote.plot <- ggplot(energest_avg_by_mote, aes(x = Mote)) +
+  geom_line(aes(y=LISTEN  *  rx_current * 3 / 32768 * 5, color="RX")) +
+  geom_line(aes(y=TRANSMIT * tx_current * 3 / 32768 * 5, color="TX")) +
+  ylab("Power Consumption (mW)") +
   xlab("Mote ID") +
-  ggtitle("Consumo de energia") +
+  ggtitle("Power Consumption Average by Mote") +
   theme_minimal() +
-  scale_x_continuous(breaks=seq(1,max(energest_avg_by_mote$Mote),1) )
-ggsave(filename='power_avg_mote.pdf', plot=power_avg_sec.plot)
+  scale_x_continuous(breaks=seq(2,max(energest_avg_by_mote$Mote),1) )
+ggsave(filename='power_avg_mote.pdf', plot=power_avg_mote.plot)
 ################################################################################
 #                               Bully Overhead                                 #
 ################################################################################

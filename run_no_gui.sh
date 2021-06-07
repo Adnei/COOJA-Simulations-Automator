@@ -17,7 +17,8 @@ elif [ "$#" -eq 2 ]; then
     echo "simulation .csc path set as: ${simulation_path}"
 elif [ "$#" -eq 0 ]; then
     echo "Script requires at least the simulation .csc path"
-    return
+    #return
+    exit
 fi
 
 rm -rf *.log
@@ -26,7 +27,7 @@ rm -rf *.testlog
 for i in {1..10}
 do
   java -jar ${jar_path} -nogui=${simulation_path} -contiki=${HOME}/contiki
-  sed -i '/test/Id' "COOJA.testlog"
+  # sed -i '/test/Id' "COOJA.testlog"
   mv "COOJA.testlog" "exec_${i}.log"
   sed -i '3,$'"s/.*/$i|&/" "exec_${i}.log"
   if (($i > 1)); then

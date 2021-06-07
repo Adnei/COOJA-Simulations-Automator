@@ -26,12 +26,13 @@ for(exec_id in c(min(sent$EXEC):max(sent$EXEC))) {
     seqn.arr <- as.integer(splitted[seq(2,length(splitted), by=2)])
     #parse number gets the ID from the string "DATA sent to X", in which the ID is X
     sink_id.arr <- parse_number(splitted[seq(1,length(splitted), by=2)])
-    send_time.arr <- sent[sent$ID == mote_id & sent$EXEC == exec_id, ]$Time
+    send_time.arr <- as.integer(sent[sent$ID == mote_id & sent$EXEC == exec_id, ]$Time)
     for(arr_idx in c(1:length(seqn.arr))) {
+      seqn_regex <- paste('seqn', paste(seqn.arr[arr_idx], '\\b', sep=''))
       recv_element <- recv[recv$EXEC == exec_id &
         grepl(paste('from', mote_id, sep=' '), recv$Message) &
-        grepl(paste('seqn', seqn.arr[arr_idx], sep=' '), recv$Message), ]
-      recv_time <- recv_element$Time[1]
+        grepl(seqn_regex, recv$Message), ]
+      recv_time <- as.integer(recv_element$Time[1])
       delay <- recv_time - send_time.arr[arr_idx]
       received <- TRUE
 
